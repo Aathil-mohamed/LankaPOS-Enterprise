@@ -1,0 +1,53 @@
+========================================================================
+             LANKAPOS ENTERPRISE - HOW TO RUN THE APPLICATION
+========================================================================
+
+STEP 1: START XAMPP MYSQL SERVER
+------------------------------------------------------------------------
+1. Open the XAMPP Control Panel.
+2. Click "Start" next to MySQL (and Apache if needed).
+
+------------------------------------------------------------------------
+STEP 2: OPEN TERMINAL & NAVIGATE TO PROJECT FOLDER
+------------------------------------------------------------------------
+Open PowerShell or Command Prompt and run:
+
+cd "f:\for fun\laravel"
+
+------------------------------------------------------------------------
+STEP 3: RUN THE APPLICATION (THE FIRST COMMAND)
+------------------------------------------------------------------------
+Execute the following command in terminal:
+
+c:\xampp\php\php.exe artisan serve
+
+(Or simply: php artisan serve)
+
+------------------------------------------------------------------------
+STEP 4: OPEN IN YOUR BROWSER
+------------------------------------------------------------------------
+Open your web browser and visit:
+
+http://localhost:8000
+
+========================================================================
+                      DEFAULT LOGIN CREDENTIALS
+========================================================================
+
+1. SUPER ADMIN ACCOUNT (Full System & Dashboard Access):
+   - Email: admin@pos.com
+   - Password: Admin123!@#
+
+2. CASHIER ACCOUNT (Direct POS Terminal Access & Printing Bills):
+   - Email: cashier@pos.com
+   - Password: Cashier123!@#
+
+========================================================================
+               USEFUL COMMANDS (IF DATABASE IS RESET)
+========================================================================
+- Run fresh database migrations with seed data:
+  c:\xampp\php\php.exe artisan migrate:fresh --seed
+
+- Run automated tests:
+  c:\xampp\php\php.exe artisan test
+========================================================================
