@@ -16,7 +16,7 @@ class EnterpriseSeeder extends Seeder
 {
     public function run(): void
     {
-        $warehouse = Warehouse::create([
+        $warehouse = Warehouse::firstOrCreate(['code' => 'WH-MAIN-001'], [
             'name' => 'Main Supermarket Warehouse',
             'code' => 'WH-MAIN-001',
             'phone' => '+1234567890',
@@ -25,16 +25,16 @@ class EnterpriseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        $categoryFood = Category::create(['name' => 'Beverages & Snacks', 'slug' => 'beverages-snacks']);
-        $categoryElec = Category::create(['name' => 'Electronics & Accessories', 'slug' => 'electronics']);
+        $categoryFood = Category::firstOrCreate(['slug' => 'beverages-snacks'], ['name' => 'Beverages & Snacks', 'slug' => 'beverages-snacks']);
+        $categoryElec = Category::firstOrCreate(['slug' => 'electronics'], ['name' => 'Electronics & Accessories', 'slug' => 'electronics']);
 
-        $brandSony = Brand::create(['name' => 'Sony', 'slug' => 'sony']);
-        $brandNestle = Brand::create(['name' => 'Nestle', 'slug' => 'nestle']);
+        $brandSony = Brand::firstOrCreate(['slug' => 'sony'], ['name' => 'Sony', 'slug' => 'sony']);
+        $brandNestle = Brand::firstOrCreate(['slug' => 'nestle'], ['name' => 'Nestle', 'slug' => 'nestle']);
 
-        $unitPcs = Unit::create(['name' => 'Pieces', 'short_name' => 'pcs']);
-        $unitBox = Unit::create(['name' => 'Box', 'short_name' => 'box']);
+        $unitPcs = Unit::firstOrCreate(['short_name' => 'pcs'], ['name' => 'Pieces', 'short_name' => 'pcs']);
+        $unitBox = Unit::firstOrCreate(['short_name' => 'box'], ['name' => 'Box', 'short_name' => 'box']);
 
-        $p1 = Product::create([
+        $p1 = Product::firstOrCreate(['sku' => 'ELEC-SONY-001'], [
             'name' => 'Wireless Noise Canceling Headphones',
             'sku' => 'ELEC-SONY-001',
             'barcode' => '8901234567890',
@@ -48,7 +48,7 @@ class EnterpriseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        $p2 = Product::create([
+        $p2 = Product::firstOrCreate(['sku' => 'FOOD-NEST-002'], [
             'name' => 'Premium Instant Coffee 200g',
             'sku' => 'FOOD-NEST-002',
             'barcode' => '8909876543210',
@@ -62,33 +62,31 @@ class EnterpriseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        Inventory::create([
-            'warehouse_id' => $warehouse->id,
-            'product_id' => $p1->id,
-            'quantity' => 50,
-        ]);
+        Inventory::firstOrCreate(
+            ['warehouse_id' => $warehouse->id, 'product_id' => $p1->id],
+            ['quantity' => 50]
+        );
 
-        Inventory::create([
-            'warehouse_id' => $warehouse->id,
-            'product_id' => $p2->id,
-            'quantity' => 120,
-        ]);
+        Inventory::firstOrCreate(
+            ['warehouse_id' => $warehouse->id, 'product_id' => $p2->id],
+            ['quantity' => 120]
+        );
 
-        Customer::create([
+        Customer::firstOrCreate(['email' => 'walkin@pos.com'], [
             'name' => 'Walk-in Customer',
             'email' => 'walkin@pos.com',
             'phone' => '0000000000',
             'credit_limit' => 0.00,
         ]);
 
-        Customer::create([
+        Customer::firstOrCreate(['email' => 'contact@acme.corp'], [
             'name' => 'Acme Corporation',
             'email' => 'contact@acme.corp',
             'phone' => '+1987654321',
             'credit_limit' => 5000.00,
         ]);
 
-        Supplier::create([
+        Supplier::firstOrCreate(['email' => 'sales@globalelec.com'], [
             'name' => 'Global Electronics Wholesale',
             'company_name' => 'Global Elec Inc',
             'email' => 'sales@globalelec.com',

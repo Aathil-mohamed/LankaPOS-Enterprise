@@ -25,11 +25,12 @@ class DashboardController extends Controller
             ->sum('grand_total');
 
         $totalExpenses = Expense::whereMonth('expense_date', now()->month)
+            ->whereYear('expense_date', now()->year)
             ->sum('amount');
 
         $totalProducts = Product::count();
 
-        $lowStockProducts = Inventory::with('product')
+        $lowStockProducts = Inventory::with(['product', 'warehouse'])
             ->whereHas('product', function ($q) {
                 $q->whereColumn('inventories.quantity', '<=', 'products.alert_quantity');
             })->get();

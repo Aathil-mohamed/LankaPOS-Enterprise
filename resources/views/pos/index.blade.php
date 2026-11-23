@@ -275,8 +275,6 @@
                                 items: this.cart.map(i => ({
                                     product_id: i.product_id,
                                     quantity: i.quantity,
-                                    unit_price: i.unit_price,
-                                    tax: (i.quantity * i.unit_price) * (i.tax_rate / 100),
                                     discount: 0
                                 }))
                             })

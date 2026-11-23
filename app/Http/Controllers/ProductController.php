@@ -39,7 +39,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'required|string|max:100|unique:products,sku',
-            'barcode' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:100|unique:products,barcode',
             'category_id' => 'required|exists:categories,id',
             'brand_id' => 'nullable|exists:brands,id',
             'unit_id' => 'required|exists:units,id',

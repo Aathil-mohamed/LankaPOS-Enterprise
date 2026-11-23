@@ -21,23 +21,45 @@ class PosService
     {
         return DB::transaction(function () use ($data, $userId) {
             $warehouseId = $data['warehouse_id'];
-            $items = $data['items']; // array of ['product_id', 'quantity', 'unit_price', 'discount', 'tax']
+            $items = $data['items']; // array of ['product_id', 'quantity', 'discount']
             $customer = $data['customer_id'] ?? null;
             $paymentMethod = $data['payment_method'] ?? 'cash';
             $paidAmount = (float) ($data['paid_amount'] ?? 0.00);
 
-            $subtotal = 0;
-            $totalTax = 0;
-            $totalDiscount = 0;
+            // Price and tax always come from the database, never from the client
+            $products = Product::whereIn('id', array_column($items, 'product_id'))
+                ->where('is_active', true)
+                ->get()
+                ->keyBy('id');
 
+            $lines = [];
             foreach ($items as $item) {
-                $lineSubtotal = $item['quantity'] * $item['unit_price'];
-                $subtotal += $lineSubtotal;
-                $totalTax += $item['tax'] ?? 0;
-                $totalDiscount += $item['discount'] ?? 0;
+                $product = $products->get($item['product_id']);
+                if (!$product) {
+                    throw new Exception("Product #{$item['product_id']} is not available for sale.");
+                }
+
+                $lineSubtotal = round($item['quantity'] * $product->selling_price, 2);
+                $lineTax = round($lineSubtotal * ($product->tax_rate / 100), 2);
+                $lineDiscount = min((float) ($item['discount'] ?? 0), $lineSubtotal);
+
+                $lines[] = [
+                    'product' => $product,
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $product->selling_price,
+                    'subtotal' => $lineSubtotal,
+                    'tax' => $lineTax,
+                    'discount' => $lineDiscount,
+                    'total' => $lineSubtotal + $lineTax - $lineDiscount,
+                ];
             }
 
-            $grandTotal = ($subtotal + $totalTax) - $totalDiscount;
+            $subtotal = array_sum(array_column($lines, 'subtotal'));
+            $totalTax = array_sum(array_column($lines, 'tax'));
+            $totalDiscount = array_sum(array_column($lines, 'discount'));
+
+            $grandTotal = round(($subtotal + $totalTax) - $totalDiscount, 2);
+            $appliedAmount = min($paidAmount, $grandTotal);
             $dueAmount = max(0, $grandTotal - $paidAmount);
             $paymentStatus = $paidAmount >= $grandTotal ? 'paid' : ($paidAmount > 0 ? 'partial' : 'unpaid');
 
@@ -51,7 +73,7 @@ class PosService
                 'discount_amount' => $totalDiscount,
                 'tax_amount' => $totalTax,
                 'grand_total' => $grandTotal,
-                'paid_amount' => $paidAmount,
+                'paid_amount' => $appliedAmount,
                 'due_amount' => $dueAmount,
                 'status' => 'completed',
                 'payment_status' => $paymentStatus,
@@ -59,37 +81,38 @@ class PosService
             ]);
 
             // 2. Add Order Items & Deduct Stock
-            foreach ($items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                
+            foreach ($lines as $line) {
+                $product = $line['product'];
+
                 OrderItem::create([
                     'sales_order_id' => $order->id,
                     'product_id' => $product->id,
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'subtotal' => $item['quantity'] * $item['unit_price'],
-                    'tax' => $item['tax'] ?? 0,
-                    'discount' => $item['discount'] ?? 0,
-                    'total' => ($item['quantity'] * $item['unit_price']) + ($item['tax'] ?? 0) - ($item['discount'] ?? 0),
+                    'quantity' => $line['quantity'],
+                    'unit_price' => $line['unit_price'],
+                    'subtotal' => $line['subtotal'],
+                    'tax' => $line['tax'],
+                    'discount' => $line['discount'],
+                    'total' => $line['total'],
                 ]);
 
-                // Atomic inventory check and deduction
+                // Lock the row so concurrent checkouts cannot oversell
                 $inventory = Inventory::where('warehouse_id', $warehouseId)
                     ->where('product_id', $product->id)
+                    ->lockForUpdate()
                     ->first();
 
-                if (!$inventory || $inventory->quantity < $item['quantity']) {
+                if (!$inventory || $inventory->quantity < $line['quantity']) {
                     throw new Exception("Insufficient inventory for product: {$product->name}");
                 }
 
-                $inventory->decrement('quantity', $item['quantity']);
+                $inventory->decrement('quantity', $line['quantity']);
 
                 // Record stock movement ledger
                 StockMovement::create([
                     'warehouse_id' => $warehouseId,
                     'product_id' => $product->id,
                     'type' => 'out',
-                    'quantity' => $item['quantity'],
+                    'quantity' => $line['quantity'],
                     'reference_type' => SalesOrder::class,
                     'reference_id' => $order->id,
                     'user_id' => $userId,
@@ -98,12 +121,12 @@ class PosService
             }
 
             // 3. Record Payment transaction
-            if ($paidAmount > 0) {
+            if ($appliedAmount > 0) {
                 Payment::create([
                     'sales_order_id' => $order->id,
                     'customer_id' => $customer,
                     'payment_method' => $paymentMethod,
-                    'amount' => $paidAmount,
+                    'amount' => $appliedAmount,
                     'reference_no' => 'PAY-' . time(),
                     'user_id' => $userId,
                 ]);
